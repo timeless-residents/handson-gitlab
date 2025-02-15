@@ -1,13 +1,13 @@
 FROM gitlab/gitlab-ce:latest
 
-# システムの依存関係をインストール (必要に応じて)
+# 必要なシステム依存関係のインストール
 RUN apt-get update && apt-get install -y \
     openssh-server \
     ca-certificates \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
-# GitLab設定 (Pumaへの移行とRender対応)
+# GitLabの初期設定 (Pumaへの移行とRender対応)
 ENV GITLAB_OMNIBUS_CONFIG="external_url 'http://localhost:8080'; \
     gitlab_rails['gitlab_shell_ssh_port'] = 22; \
     puma['port'] = 8080; \
@@ -17,23 +17,16 @@ ENV GITLAB_OMNIBUS_CONFIG="external_url 'http://localhost:8080'; \
     puma['enable'] = true; \
     unicorn['enable'] = false;"
 
-# 必要なディレクトリを作成
-RUN mkdir -p /etc/gitlab \
-    /var/log/gitlab \
-    /var/opt/gitlab \
-    && chmod -R 755 /etc/gitlab \
-    && chmod -R 755 /var/log/gitlab \
-    && chmod -R 755 /var/opt/gitlab
+# 必要なディレクトリを作成し、パーミッションを設定
+RUN mkdir -p /etc/gitlab /var/log/gitlab /var/opt/gitlab && \
+    chmod -R 755 /etc/gitlab /var/log/gitlab /var/opt/gitlab
 
 # ポートの公開
 EXPOSE 8080 22 443
 
-# ヘルスチェックの調整 (Renderの内部ヘルスチェックに任せる)
-# HEALTHCHECK --interval=60s --timeout=30s --retries=5 \
-#     CMD curl -f http://localhost/-/health || exit 1
-
-# GitLab起動スクリプト
+# カスタムGitLab起動スクリプトをコピーして実行権限を付与
 COPY docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
+
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD [""]
