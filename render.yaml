@@ -1,0 +1,17 @@
+services:
+  - type: web
+    runtime: node
+    name: gitlab
+    plan: standard # 適切なプランを選択
+    dockerfilePath: ./Dockerfile
+    disk:
+      name: gitlab-data
+      mountPath: /var/opt/gitlab
+      sizeGB: 10
+    envVars:
+      - key: GITLAB_OMNIBUS_CONFIG
+        value: "external_url 'RENDER_EXTERNAL_URL';"
+      - key: GITLAB_ROOT_PASSWORD
+        sync: false
+    healthCheckPath: /-/health
+    autoDeploy: false
