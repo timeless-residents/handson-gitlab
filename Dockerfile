@@ -1,37 +1,24 @@
-
+# GitLab CE イメージ (ARM64 用)
 FROM gitlab/gitlab-ce:latest
 
-# システム依存関係のインストール
-RUN apt-get update && apt-get install -y \
-    openssh-server \
-    ca-certificates \
-    tzdata \
-    netcat \
-    && rm -rf /var/lib/apt/lists/*
+# 必要なパッケージ (tzdata はタイムゾーン設定に必要)
+RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
 
-# GitLabの初期設定
-ENV GITLAB_OMNIBUS_CONFIG="external_url 'http://0.0.0.0:3000'; \
-    nginx['listen_port'] = 3000; \
-    nginx['listen_addresses'] = ['0.0.0.0']; \
-    gitlab_workhorse['listen_network'] = 'tcp'; \
-    gitlab_workhorse['listen_addr'] = '0.0.0.0:3000'; \
-    unicorn['port'] = 3000; \
-    unicorn['listen'] = '0.0.0.0'; \
-    postgresql['port'] = 5432; \
-    redis['port'] = 6379; \
-    prometheus_monitoring['enable'] = false; \
-    nginx['status']['port'] = 3001; \
-    nginx['status']['options']['listen_addresses'] = ['0.0.0.0'];"
+# 環境変数 (Render で設定するものをデフォルト値として設定)
+# GitLab のバージョンによっては、これらの設定が不要な場合もあります
+ENV RAILS_ENV=production
+ENV DB_ADAPTER=postgresql
+ENV DB_HOST= 
+ENV DB_NAME= 
+ENV DB_USER= 
+ENV DB_PASS= 
+ENV DB_PORT=5432
+ENV REDIS_HOST= 
+ENV REDIS_PORT=6379
 
-# 必要なディレクトリを作成
-RUN mkdir -p /etc/gitlab /var/log/gitlab /var/opt/gitlab && \
-    chmod -R 755 /etc/gitlab /var/log/gitlab /var/opt/gitlab
-
-# ポートの公開
-EXPOSE 3000 3001 22
-
-# カスタム起動スクリプトの追加
+# エントリポイントスクリプトをコピー
 COPY docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+# Render では CMD で起動コマンドを指定
+CMD ["/docker-entrypoint.sh"]
