@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # GitLabの初期設定 (Pumaへの移行とRender対応)
-ENV GITLAB_OMNIBUS_CONFIG="external_url 'http://localhost:8080'; \
+# ※ここでの external_url のデフォルトを 0.0.0.0 で待ち受けるように変更
+ENV GITLAB_OMNIBUS_CONFIG="external_url 'http://0.0.0.0:8080'; \
     gitlab_rails['gitlab_shell_ssh_port'] = 22; \
     puma['port'] = 8080; \
     postgresql['port'] = 5432; \
