@@ -1,7 +1,8 @@
 services:
   - type: web
-    runtime: docker
+    runtime: node
     name: gitlab
+    plan: standard
     dockerfilePath: ./Dockerfile
     disk:
       name: gitlab-data
@@ -9,14 +10,21 @@ services:
       sizeGB: 10
     envVars:
       - key: PORT
-        value: 10000
+        value: 3000
       - key: GITLAB_OMNIBUS_CONFIG
         value: |
-          external_url 'http://0.0.0.0:10000';
-          gitlab_workhorse['listen_network'] = 'tcp';
-          gitlab_workhorse['listen_addr'] = '0.0.0.0:10000';
-          nginx['listen_port'] = 10000;
+          external_url 'http://0.0.0.0:3000';
+          nginx['listen_port'] = 3000;
           nginx['listen_addresses'] = ['0.0.0.0'];
+          gitlab_workhorse['listen_network'] = 'tcp';
+          gitlab_workhorse['listen_addr'] = '0.0.0.0:3000';
+          unicorn['port'] = 3000;
+          unicorn['listen'] = '0.0.0.0';
+          postgresql['port'] = 5432;
+          redis['port'] = 6379;
+          prometheus_monitoring['enable'] = false;
+          nginx['status']['port'] = 3001;
+          nginx['status']['options']['listen_addresses'] = ['0.0.0.0'];
       - key: GITLAB_ROOT_PASSWORD
         sync: false
     healthCheckPath: /-/health
