@@ -2,7 +2,7 @@ services:
   - type: web
     runtime: node
     name: gitlab
-    plan: standard # 適切なプランを選択
+    plan: free
     dockerfilePath: ./Dockerfile
     disk:
       name: gitlab-data
