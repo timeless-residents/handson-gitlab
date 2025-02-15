@@ -1,8 +1,7 @@
 services:
   - type: web
-    runtime: node
+    runtime: docker
     name: gitlab
-    plan: standard # 適切なプランを選択
     dockerfilePath: ./Dockerfile
     disk:
       name: gitlab-data
@@ -10,7 +9,9 @@ services:
       sizeGB: 10
     envVars:
       - key: GITLAB_OMNIBUS_CONFIG
-        value: "external_url 'RENDER_EXTERNAL_URL';"
+        value: "external_url 'http://0.0.0.0:10000'; gitlab_workhorse['listen_network'] = 'tcp'; gitlab_workhorse['listen_addr'] = '0.0.0.0:10000';"
+      - key: PORT
+        value: 10000
       - key: GITLAB_ROOT_PASSWORD
         sync: false
     healthCheckPath: /-/health
