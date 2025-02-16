@@ -25,11 +25,15 @@ ENV GITLAB_OMNIBUS_CONFIG="\
 # 必要なディレクトリを作成
 RUN mkdir -p /run/sshd
 
+# 単純なウェブサーバーを追加してポート検出を確実にする
+RUN apt-get update && apt-get install -y python3
+
 # 起動スクリプトを作成
 RUN echo '#!/bin/bash\n\
     \n\
-    # 一時的なリスナーを起動（ポート検出用）\n\
-    (echo "HTTP/1.1 200 OK\n\nOK" | nc -l -p ${PORT} &)\n\
+    # 一時的なWebサーバーを起動（ポート検出用）\n\
+    python3 -m http.server ${PORT} --bind 0.0.0.0 &\n\
+    TEMP_SERVER_PID=$!\n\
     \n\
     # GitLabの起動\n\
     /assets/wrapper &\n\
@@ -37,8 +41,11 @@ RUN echo '#!/bin/bash\n\
     # 設定の適用を待つ\n\
     sleep 30\n\
     \n\
+    # 一時的なWebサーバーを停止\n\
+    kill $TEMP_SERVER_PID\n\
+    \n\
     # プロセスを維持\n\
-    exec tail -f /var/log/gitlab/nginx/access.log\n\
+    tail -f /var/log/gitlab/nginx/access.log\n\
     ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 EXPOSE ${PORT}
