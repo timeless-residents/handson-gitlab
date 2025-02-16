@@ -28,3 +28,7 @@ prometheus_monitoring['enable'] = false
 # GitLab Workhorse設定
 gitlab_workhorse['listen_network'] = "tcp"
 gitlab_workhorse['listen_addr'] = "0.0.0.0:#{ENV['PORT'] || 80}"
+
+unicorn['enable'] = false
+puma['enable'] = true
+
