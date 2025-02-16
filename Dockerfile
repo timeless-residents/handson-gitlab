@@ -3,6 +3,9 @@ FROM debian:12
 # コンテナ環境であることを示すファイルを作成
 RUN touch /.dockerenv
 
+# Render用のポート設定（必須）
+ENV PORT=10000
+
 # 環境変数の設定
 ENV BACKUP_TIME="0 12 * * *" \
     PATH=/opt/gitlab/embedded/bin:/opt/gitlab/bin:/assets:$PATH \
@@ -10,8 +13,7 @@ ENV BACKUP_TIME="0 12 * * *" \
     PACKAGECLOUD_REPO=gitlab-ce \
     RELEASE_PACKAGE=gitlab-ce \
     RELEASE_VERSION=16.1.2-ce.0 \
-    DOWNLOAD_URL=https://packages.gitlab.com/gitlab/gitlab-ce/packages/debian/bookworm/gitlab-ce_16.1.2-ce.0_amd64.deb/download.deb \
-    PORT=8080
+    DOWNLOAD_URL=https://packages.gitlab.com/gitlab/gitlab-ce/packages/debian/bookworm/gitlab-ce_16.1.2-ce.0_amd64.deb/download.deb
 
 # 必要なパッケージのインストールと設定
 RUN apt-get update -q && \
@@ -39,35 +41,25 @@ RUN apt-get update -q && \
 
 # GitLabの設定
 ENV GITLAB_OMNIBUS_CONFIG="\
-    package['detect_init'] = false; \
     external_url 'http://0.0.0.0:${PORT}'; \
-    nginx['enable'] = true; \
     nginx['listen_port'] = ${PORT}; \
     nginx['listen_address'] = '0.0.0.0'; \
-    puma['enable'] = true; \
-    puma['listen'] = '0.0.0.0'; \
     puma['port'] = ${PORT}; \
     puma['worker_processes'] = 2; \
-    prometheus_monitoring['enable'] = false; \
-    gitlab_rails['auto_migrate'] = true; \
-    postgresql['enable'] = true; \
-    postgresql['shared_buffers'] = '256MB'; \
-    redis['enable'] = true; \
-    sidekiq['concurrency'] = 5; \
-    logging['svlogd_size'] = 200 * 1024 * 1024; \
-    logging['svlogd_num'] = 30; \
-    gitlab_rails['env'] = { 'TMPDIR' => '/tmp' }; \
     gitlab_rails['gitlab_shell_ssh_port'] = 22"
 
-# ヘルスチェックの設定
-HEALTHCHECK --interval=60s --timeout=30s --retries=5 \
-    CMD curl -f http://localhost:${PORT}/ || exit 1
+# 一時的なWebサーバーを作成（ポート検出用）
+RUN echo '#!/bin/bash\n\
+    python3 -m http.server ${PORT} --bind 0.0.0.0 &\n\
+    P1=$!\n\
+    sleep 5\n\
+    kill $P1\n\
+    exec /opt/gitlab/bin/gitlab-ctl reconfigure && \
+    exec /opt/gitlab/bin/gitlab-ctl start && \
+    tail -f /dev/null\n\
+    ' > /start.sh && chmod +x /start.sh
 
-# ポートとボリュームの設定
-EXPOSE ${PORT} 22
-VOLUME ["/etc/gitlab", "/var/opt/gitlab", "/var/log/gitlab"]
+EXPOSE ${PORT}
 
 # コマンドの設定
-CMD /opt/gitlab/bin/gitlab-ctl reconfigure && \
-    /opt/gitlab/bin/gitlab-ctl start && \
-    tail -f /var/log/gitlab/nginx/access.log
+CMD ["/start.sh"]
