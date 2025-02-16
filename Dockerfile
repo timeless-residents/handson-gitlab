@@ -6,15 +6,14 @@ ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # 基本ツールとGitLabリポジトリ追加に必要なパッケージをインストール
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     ca-certificates \
     curl \
     openssh-server \
     tzdata \
-    perl && \
-    rm -rf /var/lib/apt/lists/*
-
-
+    perl \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
 
 # GitLab公式パッケージリポジトリを追加
 RUN curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
