@@ -21,19 +21,26 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # GitLab公式パッケージリポジトリを追加
 RUN curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
 
-# GitLab CEをインストール（initシステム検出を無効化）
-ENV GITLAB_OMNIBUS_CONFIG="package['detect_init_system'] = false; \
-    external_url 'http://0.0.0.0:${PORT}'; \
+# GitLab CEをインストール
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y gitlab-ce && \
+    rm -rf /var/lib/apt/lists/*
+
+# GitLabの設定
+ENV GITLAB_OMNIBUS_CONFIG="external_url 'http://0.0.0.0:8080'; \
     gitlab_rails['gitlab_shell_ssh_port'] = 22; \
     puma['worker_processes'] = 0; \
     sidekiq['concurrency'] = 2; \
-    prometheus_monitoring['enable'] = false"
+    prometheus_monitoring['enable'] = false; \
+    package['detect_init_system'] = false"
 
-# ポートを明示的に指定
-ENV PORT=8080
-
-# 必要なディレクトリを作成
+# SSHディレクトリを作成
 RUN mkdir -p /run/sshd
 
-EXPOSE ${PORT}
-CMD ["gitlab-ctl", "reconfigure"]
+EXPOSE 8080 22
+
+# 起動スクリプト
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
