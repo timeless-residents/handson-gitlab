@@ -4,8 +4,8 @@ set -e
 # システムの初期化
 /assets/wrapper &
 
-# ポートが開いているか確認
-while ! nc -z localhost ${PORT}; do
+# ポートの確認（BusyBox互換の方法）
+while ! nc -w 1 localhost ${PORT} </dev/null; do
   echo "Waiting for port ${PORT}..."
   sleep 1
 done
