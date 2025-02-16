@@ -1,13 +1,14 @@
 #!/bin/bash
+set -e
 
-# GitLabの設定を適用
-gitlab-ctl reconfigure
-
-# Nginxを明示的に再起動
-gitlab-ctl restart nginx
+# システムの初期化
+/assets/wrapper &
 
 # ポートが開いているか確認
-netstat -tulpn | grep LISTEN
+while ! nc -z localhost ${PORT}; do
+  echo "Waiting for port ${PORT}..."
+  sleep 1
+done
 
-# GitLabのプロセスを維持
-exec tail -f /dev/null
+# プロセスを維持
+tail -f /dev/null
