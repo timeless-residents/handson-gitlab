@@ -13,25 +13,25 @@ ENV TZ=Asia/Tokyo
 
 # Omnibus GitLab 設定: init システム検出を無効化し、各種設定を上書き
 ENV GITLAB_OMNIBUS_CONFIG="package['detect_init_system'] = false; \
-    external_url 'https://handson-gitlab.onrender.com'; \
-    puma['enable'] = true; \
-    puma['worker_processes'] = 2; \
-    puma['min_threads'] = 1; \
-    puma['max_threads'] = 4; \
-    puma['per_worker_max_memory_mb'] = 300; \
-    postgresql['enable'] = true; \
-    postgresql['shared_buffers'] = '128MB'; \
-    postgresql['max_connections'] = 100; \
-    redis['maxmemory'] = '256mb'; \
-    redis['maxmemory_policy'] = 'allkeys-lru'; \
-    nginx['enable'] = true; \
-    nginx['worker_processes'] = 2; \
-    nginx['listen_port'] = ENV['PORT'] || 80; \
-    nginx['listen_https'] = false; \
-    prometheus_monitoring['enable'] = false; \
-    gitlab_workhorse['enable'] = true; \
-    gitlab_workhorse['listen_network'] = 'tcp'; \
-    gitlab_workhorse['listen_addr'] = '0.0.0.0:' + (ENV['PORT'] || 80).to_s;"
+  external_url 'https://handson-gitlab.onrender.com'; \
+  puma['enable'] = true; \
+  puma['worker_processes'] = 2; \
+  puma['min_threads'] = 1; \
+  puma['max_threads'] = 4; \
+  puma['per_worker_max_memory_mb'] = 300; \
+  postgresql['enable'] = true; \
+  postgresql['shared_buffers'] = '128MB'; \
+  postgresql['max_connections'] = 100; \
+  redis['maxmemory'] = '256mb'; \
+  redis['maxmemory_policy'] = 'allkeys-lru'; \
+  nginx['enable'] = true; \
+  nginx['worker_processes'] = 2; \
+  nginx['listen_port'] = ENV['PORT'] || 80; \
+  nginx['listen_https'] = false; \
+  prometheus_monitoring['enable'] = false; \
+  gitlab_workhorse['enable'] = true; \
+  gitlab_workhorse['listen_network'] = 'tcp'; \
+  gitlab_workhorse['listen_addr'] = '0.0.0.0:' + (ENV['PORT'] || 80).to_s;"
 
 # 必要なディレクトリの作成＆権限付与
 RUN mkdir -p /etc/gitlab /var/log/gitlab /var/opt/gitlab \
