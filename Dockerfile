@@ -1,10 +1,20 @@
 # Dockerfile for GitLab CE on Ubuntu 22.04
 FROM ubuntu:22.04
 
+# タイムゾーンを事前設定
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # 基本ツールとGitLabリポジトリ追加に必要なパッケージをインストール
-RUN apt-get update && apt-get install -y \
-    ca-certificates curl openssh-server tzdata perl && \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    openssh-server \
+    tzdata \
+    perl && \
     rm -rf /var/lib/apt/lists/*
+
+
 
 # GitLab公式パッケージリポジトリを追加
 RUN curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
