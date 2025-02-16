@@ -1,19 +1,26 @@
+#==========================================================
 # Dockerfile
+#==========================================================
 FROM gitlab/gitlab-ce:latest
 
-# システム依存関係のインストール
+# 必要に応じて追加パッケージなどをインストール
 RUN apt-get update && apt-get install -y \
     openssh-server \
     ca-certificates \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
-# タイムゾーン
 ENV TZ=Asia/Tokyo
 
-# Omnibus GitLab 設定: init システム検出を無効化し、各種設定を上書き
-ENV GITLAB_OMNIBUS_CONFIG="package['detect_init_system'] = false; \
+# Omnibus GitLab の設定を ENV に詰め込む
+#  - detect_init_system を false にする
+#  - (もしデータディレクトリを変更するなら git_data_dir を記載)
+#  - external_url や puma/postgresql/redis/nginx 設定もまとめて記載
+ENV GITLAB_OMNIBUS_CONFIG=" \
+  package['detect_init_system'] = false; \
   external_url 'https://handson-gitlab.onrender.com'; \
+  # ↓ git_data_dirs は非推奨なので削除、または置き換え
+  # git_data_dir '/var/opt/gitlab/git-data'; \
   puma['enable'] = true; \
   puma['worker_processes'] = 2; \
   puma['min_threads'] = 1; \
@@ -26,6 +33,7 @@ ENV GITLAB_OMNIBUS_CONFIG="package['detect_init_system'] = false; \
   redis['maxmemory_policy'] = 'allkeys-lru'; \
   nginx['enable'] = true; \
   nginx['worker_processes'] = 2; \
+  # Render 等で PORT 環境変数が提供される場合を考慮
   nginx['listen_port'] = ENV['PORT'] || 80; \
   nginx['listen_https'] = false; \
   prometheus_monitoring['enable'] = false; \
@@ -33,25 +41,22 @@ ENV GITLAB_OMNIBUS_CONFIG="package['detect_init_system'] = false; \
   gitlab_workhorse['listen_network'] = 'tcp'; \
   gitlab_workhorse['listen_addr'] = '0.0.0.0:' + (ENV['PORT'] || 80).to_s;"
 
-# 必要なディレクトリの作成＆権限付与
+# GitLab 用ディレクトリの作成および権限付与
 RUN mkdir -p /etc/gitlab /var/log/gitlab /var/opt/gitlab \
     && chmod 777 /var/opt/gitlab /var/log/gitlab
 
-# runit 用のディレクトリ作成（GitLab CE イメージ標準に近い形）
+# runit 用のサービスディレクトリを準備（GitLab CE イメージに準ずる）
 RUN mkdir -p /opt/gitlab/sv/gitlab-runsvdir/supervise \
     && mkfifo /opt/gitlab/sv/gitlab-runsvdir/supervise/ok \
     && printf "#!/bin/sh\nexec 2>&1\numask 077\nexec /usr/bin/runsvdir -P /opt/gitlab/service\n" > /opt/gitlab/sv/gitlab-runsvdir/run \
     && chmod a+x /opt/gitlab/sv/gitlab-runsvdir/run \
     && ln -s /opt/gitlab/sv/gitlab-runsvdir /opt/gitlab/service
 
-# ポート公開 (Render 側では ENV['PORT'] をセットする想定)
 EXPOSE ${PORT:-80}
 
-# エントリーポイントスクリプトをコピー
-# （以下のスクリプト例では gitlab-ctl reconfigure → start を行うなど）
+# エントリーポイントスクリプトを COPY
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# 実行
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["tail", "-f", "/dev/null"]
