@@ -1,10 +1,38 @@
-FROM gitlab/gitlab-ce:latest
+FROM debian:12
 
-# コンテナ環境であることを示すファイルを作成
-RUN touch /.dockerenv
+# 環境変数の設定
+ENV BACKUP_TIME="0 12 * * *" \
+    PATH=/opt/gitlab/embedded/bin:/opt/gitlab/bin:/assets:$PATH \
+    TERM=xterm \
+    PACKAGECLOUD_REPO=gitlab-ce \
+    RELEASE_PACKAGE=gitlab-ce \
+    RELEASE_VERSION=16.1.2-ce.0 \
+    DOWNLOAD_URL=https://packages.gitlab.com/gitlab/gitlab-ce/packages/debian/bookworm/gitlab-ce_16.1.2-ce.0_amd64.deb/download.deb \
+    PORT=8080
 
-# Render用のポート設定
-ENV PORT=8080
+# コンテナファイルのコピー
+COPY container-files /
+
+# 必要なパッケージのインストールと設定
+RUN apt-get update -q && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
+    ca-certificates \
+    openssh-server \
+    wget \
+    apt-transport-https \
+    vim \
+    tzdata \
+    cron \
+    perl \
+    nano \
+    python3 && \
+    rm -rf /var/lib/apt/lists/* && \
+    sed 's/session\s*required\s*pam_loginuid.so/session optional pam_loginuid.so/g' -i /etc/pam.d/sshd && \
+    rm -rf /etc/update-motd.d /etc/motd /etc/motd.dynamic && \
+    ln -fs /dev/null /run/motd. && \
+    /assets/setup && \
+    mkdir -p /run/sshd /var/log/gitlab/nginx && \
+    touch /.dockerenv
 
 # GitLabの設定
 ENV GITLAB_OMNIBUS_CONFIG="\
@@ -23,20 +51,12 @@ ENV GITLAB_OMNIBUS_CONFIG="\
     postgresql['shared_buffers'] = '256MB'; \
     redis['enable'] = true; \
     sidekiq['concurrency'] = 5; \
-    # ログディレクトリの権限を設定 \
     logging['svlogd_size'] = 200 * 1024 * 1024; \
     logging['svlogd_num'] = 30; \
-    # ReadOnlyFileSystem対策 \
-    gitlab_rails['env'] = { 'TMPDIR' => '/tmp' }"
+    gitlab_rails['env'] = { 'TMPDIR' => '/tmp' }; \
+    gitlab_rails['gitlab_shell_ssh_port'] = 22"
 
-# 必要なディレクトリを作成し、権限を設定
-RUN mkdir -p /run/sshd /var/log/gitlab/nginx /var/opt/gitlab/gitlab-rails && \
-    chmod -R 755 /var/log/gitlab
-
-# 単純なウェブサーバーを追加してポート検出を確実にする
-RUN apt-get update && apt-get install -y python3
-
-# 起動スクリプトを作成
+# 起動スクリプトの作成
 RUN echo '#!/bin/bash\n\
     \n\
     # GitLabの権限を更新\n\
@@ -48,6 +68,7 @@ RUN echo '#!/bin/bash\n\
     \n\
     # GitLabの起動\n\
     /assets/wrapper &\n\
+    GITLAB_PID=$!\n\
     \n\
     # 設定の適用を待つ\n\
     sleep 30\n\
@@ -55,14 +76,17 @@ RUN echo '#!/bin/bash\n\
     # 一時的なWebサーバーを停止\n\
     kill $TEMP_SERVER_PID\n\
     \n\
-    # NGINXのログディレクトリが存在することを確認\n\
-    mkdir -p /var/log/gitlab/nginx\n\
-    touch /var/log/gitlab/nginx/access.log\n\
-    \n\
-    # プロセスを維持\n\
-    tail -f /var/log/gitlab/nginx/access.log\n\
+    # GitLabプロセスを前面で実行\n\
+    wait $GITLAB_PID\n\
     ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
-EXPOSE ${PORT}
+# ヘルスチェックの設定
+HEALTHCHECK --interval=60s --timeout=30s --retries=5 \
+    CMD curl -f http://localhost:${PORT}/ || exit 1
 
+# ポートとボリュームの設定
+EXPOSE ${PORT} 22
+VOLUME ["/etc/gitlab", "/var/opt/gitlab", "/var/log/gitlab"]
+
+# エントリーポイントの設定
 ENTRYPOINT ["/entrypoint.sh"]
