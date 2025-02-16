@@ -14,13 +14,15 @@ RUN echo "external_url 'http://0.0.0.0:${PORT}'" >> /etc/gitlab/gitlab.rb && \
     echo "gitlab_workhorse['listen_addr'] = '0.0.0.0:${PORT}'" >> /etc/gitlab/gitlab.rb && \
     echo "package['detect_init_system'] = false" >> /etc/gitlab/gitlab.rb
 
-# 必要なディレクトリを作成
-RUN mkdir -p /run/sshd
+# 起動スクリプトを作成
+RUN echo '#!/bin/bash\n\
+    gitlab-ctl reconfigure\n\
+    gitlab-ctl start\n\
+    /opt/gitlab/embedded/bin/nginx -g "daemon off;"' > /startup.sh && \
+    chmod +x /startup.sh
 
-# カスタム起動スクリプトを作成
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
-
+# ポートを開く
 EXPOSE ${PORT}
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+# 起動コマンドを指定
+CMD ["/startup.sh"]
